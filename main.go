@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"   
+	"context"
+    "github.com/go-redis/redis/v8"
+	"time"
 )
 
 const baseurl = "https://api.openweathermap.org/data/2.5/weather"
 
+var ctx = context.Background()
+var rdb *redis.Client
 type WeatherStruct struct {
 	Coord struct {
 		Lon float64 `json:"lon"`
@@ -53,30 +58,29 @@ type WeatherStruct struct {
 	Cod      int    `json:"cod"`
 }
 
-// func get_home_page(w http.ResponseWriter, r *http.Request){
-// 	page, _ := template.ParseFiles("templates/insex.html")
-// 	page.Execute(w)
-// }
-
 func apiCall(c *gin.Context) {
-	//?q={city name}&appid={API key}
-	//city := "London"
+	
 	formContent, _ := c.GetQuery("city")
-
-	fmt.Println(formContent)
-	res, err := http.Get(baseurl + "?q=" + formContent + "&units=metric" + "&appid=2b64dd976322d684ff5c17f2f86e058f")
-	fmt.Println("URL ", baseurl+"?q="+formContent+"&appid=2b64dd976322d684ff5c17f2f86e058f")
-	bytes, err := ioutil.ReadAll(res.Body)
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
+	
+	bytes, err := rdb.Get(ctx, formContent).Bytes()
+	
+    if err == redis.Nil {
+        fmt.Println("Undefined City")
+		res, _ := http.Get(baseurl + "?q=" + formContent + "&units=metric" + "&appid=2b64dd976322d684ff5c17f2f86e058f")
+		bytes, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+    } else if err != nil {
+        panic(err)
+    } 
+	
 	var weather WeatherStruct
 	
 	if err := json.Unmarshal(bytes, &weather); err != nil {
 		fmt.Println("Error parsing json", err)
 	}
+	err = rdb.Set(ctx, formContent, bytes, time.Minute).Err()
 	c.HTML(
 		http.StatusOK,
 		"weather.html",
@@ -89,6 +93,11 @@ func apiCall(c *gin.Context) {
 }
 
 func main() {
+	rdb = redis.NewClient(&redis.Options{
+        Addr:     "localhost:6379",
+        Password: "", // no password set
+        DB:       0,  // use default DB
+    })  
 	router := gin.Default()
 	router.LoadHTMLGlob("templates/*")
 	router.GET("/", func(c *gin.Context){
