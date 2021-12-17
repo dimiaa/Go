@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	// "html/template"
 	"github.com/gin-gonic/gin"
 )
 

@@ -7,8 +7,24 @@
 <body>
 	Введите город:
 	<form action="/weather" method="get">
-		<input type="text" name="city" size="40"></input>
-		<input type="submit"></input>
+		<input id="city" type="text" name="city" size="40"></input>
+		<button type="submit">Получить погоду</button>
 	</form>
+	<button onclick="getCity()">Получить город по IP</button>
 </body>
+<script>
+	function getCity() {
+		const cityInput = document.getElementById("city");
+		const xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4 && xhr.status === 200) {
+				const resp = xhr.responseText;
+				const ipObj = JSON.parse(resp)
+				city.value = ipObj.city
+			}
+		}
+		xhr.open("GET", "http://ip-api.com/json/", true);
+		try { xhr.send(); } catch (err) {}
+	}
+</script>	
 </html>
