@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
+	// "html/template"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,30 +54,53 @@ type WeatherStruct struct {
 	Cod      int    `json:"cod"`
 }
 
+// func get_home_page(w http.ResponseWriter, r *http.Request){
+// 	page, _ := template.ParseFiles("templates/insex.html")
+// 	page.Execute(w)
+// }
+
 func apiCall(c *gin.Context) {
 	//?q={city name}&appid={API key}
-	city := "London"
-	res, err := http.Get(baseurl + "?q=" + city + "&appid=2b64dd976322d684ff5c17f2f86e058f")
-	fmt.Println("URL ", baseurl+"?q="+city+"&appid=2b64dd976322d684ff5c17f2f86e058f")
+	//city := "London"
+	formContent, _ := c.GetQuery("city")
+
+	fmt.Println(formContent)
+	res, err := http.Get(baseurl + "?q=" + formContent + "&units=metric" + "&appid=2b64dd976322d684ff5c17f2f86e058f")
+	fmt.Println("URL ", baseurl+"?q="+formContent+"&appid=2b64dd976322d684ff5c17f2f86e058f")
 	bytes, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Println(err.Error())
 	}
 
 	var weather WeatherStruct
-
+	
 	if err := json.Unmarshal(bytes, &weather); err != nil {
 		fmt.Println("Error parsing json", err)
 	}
-
+	c.HTML(
+		http.StatusOK,
+		"weather.html",
+		gin.H{
+			"temp" : weather.Main.Temp,
+			"feelstemp" : weather.Main.FeelsLike,
+		},
+	)
 	fmt.Println(weather)
 }
 
 func main() {
 	router := gin.Default()
-
+	router.LoadHTMLGlob("templates/*")
+	router.GET("/", func(c *gin.Context){
+		c.HTML(
+			http.StatusOK,
+			"index.html",
+			gin.H{
+				"title" : "Home Page",
+			},
+		)
+	})
 	router.GET("/weather", apiCall)
-
 	router.Run()
 }
